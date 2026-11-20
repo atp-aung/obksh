@@ -1,0 +1,21 @@
+:root {
+  font-family: Arial, sans-serif;
+  color: #212529;
+  background-color: #f8f9fa;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.book-icon {
+  font-size: 3rem;
+  color: #0d6efd;
+}
+
+button {
+  cursor: pointer;
+}
