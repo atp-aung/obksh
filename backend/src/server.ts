@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import pool from "./config/pool";
+//import pool from "./config/pool";
+import type { RowDataPacket } from "mysql2";
+import { selectQuery } from "./utils/db";
 
 dotenv.config();
 
@@ -9,6 +11,10 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+interface DatabaseHealthRow extends RowDataPacket {
+  database_connected: number;
+}
 
 // Security
 app.disable("x-powered-by");
@@ -44,7 +50,9 @@ app.get("/api/health", (req, res) => {
 // Database Health Check
 app.get("/api/db-health", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT 1 AS database_connected");
+    const rows = await selectQuery<DatabaseHealthRow>(
+      "SELECT 1 AS database_connected",
+    );
 
     res.status(200).json({
       success: true,
