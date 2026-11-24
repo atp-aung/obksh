@@ -10,6 +10,8 @@ import {
 
 import { findBookById } from "../models/bookModel";
 import { withTransaction } from "../utils/db";
+import { handleDatabaseError } from "../utils/databaseError";
+
 import type { PoolConnection } from "mysql2/promise";
 
 import type { CartItemWithBook } from "../models/cartItemModel";
@@ -46,6 +48,7 @@ export async function getUserCart(userId: number): Promise<CartItemWithBook[]> {
 }
 
 // Add Book To Cart
+
 export async function addToCart(
   userId: number,
   bookId: number,
@@ -59,30 +62,35 @@ export async function addToCart(
     throw new Error("Quantity must be a positive integer");
   }
 
-  return withTransaction(async (connection) => {
-    const cart = await getOrCreateCart(userId, connection, true);
+  try {
+    return await withTransaction(async (connection) => {
+      const cart = await getOrCreateCart(userId, connection, true);
 
-    const book = await findBookById(bookId);
+      const book = await findBookById(bookId);
 
-    if (!book || !book.is_active) {
-      throw new Error("Book not found or unavailable");
-    }
+      if (!book || !book.is_active) {
+        throw new Error("Book not found or unavailable");
+      }
 
-    const cartItems = await findCartItems(cart.id, connection);
+      const cartItems = await findCartItems(cart.id, connection);
 
-    const existingItem = cartItems.find((item) => item.book_id === bookId);
+      const existingItem = cartItems.find((item) => item.book_id === bookId);
 
-    const totalQuantity = (existingItem?.quantity ?? 0) + quantity;
+      const totalQuantity = (existingItem?.quantity ?? 0) + quantity;
 
-    if (totalQuantity > book.stock) {
-      throw new Error("Requested quantity exceeds available stock");
-    }
+      if (totalQuantity > book.stock) {
+        throw new Error("Requested quantity exceeds available stock");
+      }
 
-    return addBookToCart(cart.id, bookId, quantity, connection);
-  });
+      return await addBookToCart(cart.id, bookId, quantity, connection);
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Update Cart Item Quantity
+
 export async function updateCartQuantity(
   userId: number,
   cartItemId: number,
@@ -96,32 +104,42 @@ export async function updateCartQuantity(
     throw new Error("Quantity must be a positive integer");
   }
 
-  return withTransaction(async (connection) => {
-    const cart = await getOrCreateCart(userId, connection, true);
+  try {
+    return await withTransaction(async (connection) => {
+      const cart = await getOrCreateCart(userId, connection, true);
 
-    const cartItems = await findCartItems(cart.id, connection);
+      const cartItems = await findCartItems(cart.id, connection);
 
-    const item = cartItems.find((cartItem) => cartItem.id === cartItemId);
+      const item = cartItems.find((cartItem) => cartItem.id === cartItemId);
 
-    if (!item) {
-      throw new Error("Cart item not found");
-    }
+      if (!item) {
+        throw new Error("Cart item not found");
+      }
 
-    const book = await findBookById(item.book_id);
+      const book = await findBookById(item.book_id);
 
-    if (!book || !book.is_active) {
-      throw new Error("Book is unavailable");
-    }
+      if (!book || !book.is_active) {
+        throw new Error("Book is unavailable");
+      }
 
-    if (quantity > book.stock) {
-      throw new Error("Requested quantity exceeds available stock");
-    }
+      if (quantity > book.stock) {
+        throw new Error("Requested quantity exceeds available stock");
+      }
 
-    return updateCartItemQuantity(cart.id, item.book_id, quantity, connection);
-  });
+      return await updateCartItemQuantity(
+        cart.id,
+        item.book_id,
+        quantity,
+        connection,
+      );
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Remove Book From Cart
+
 export async function removeFromCart(
   userId: number,
   cartItemId: number,
@@ -130,26 +148,35 @@ export async function removeFromCart(
     throw new Error("Invalid cart item ID");
   }
 
-  return withTransaction(async (connection) => {
-    const cart = await getOrCreateCart(userId, connection, true);
+  try {
+    return await withTransaction(async (connection) => {
+      const cart = await getOrCreateCart(userId, connection, true);
 
-    const cartItems = await findCartItems(cart.id, connection);
+      const cartItems = await findCartItems(cart.id, connection);
 
-    const item = cartItems.find((cartItem) => cartItem.id === cartItemId);
+      const item = cartItems.find((cartItem) => cartItem.id === cartItemId);
 
-    if (!item) {
-      throw new Error("Cart item not found");
-    }
+      if (!item) {
+        throw new Error("Cart item not found");
+      }
 
-    return removeBookFromCart(cart.id, item.book_id, connection);
-  });
+      return await removeBookFromCart(cart.id, item.book_id, connection);
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Clear User Cart
-export async function clearUserCart(userId: number): Promise<boolean> {
-  return withTransaction(async (connection) => {
-    const cart = await getOrCreateCart(userId, connection, true);
 
-    return clearCart(cart.id, connection);
-  });
+export async function clearUserCart(userId: number): Promise<boolean> {
+  try {
+    return await withTransaction(async (connection) => {
+      const cart = await getOrCreateCart(userId, connection, true);
+
+      return await clearCart(cart.id, connection);
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }

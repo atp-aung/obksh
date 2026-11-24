@@ -23,6 +23,7 @@ import { createOrder } from "../models/orderModel";
 import type { PaymentMethod } from "../models/orderModel";
 
 import { createOrderItem } from "../models/orderItemModel";
+import { handleDatabaseError } from "../utils/databaseError";
 
 import type { Order, OrderStatus, PaymentStatus } from "../models/orderModel";
 
@@ -63,15 +64,21 @@ function validateCheckoutInput(input: CheckoutInput): void {
 }
 
 // Get User Orders
+
 export async function getUserOrders(userId: number): Promise<Order[]> {
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new Error("Invalid user ID");
   }
 
-  return findOrdersByUserId(userId);
+  try {
+    return await findOrdersByUserId(userId);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Get User Order Details
+
 export async function getUserOrderDetails(
   userId: number,
   orderId: number,
@@ -79,25 +86,34 @@ export async function getUserOrderDetails(
   order: Order;
   items: OrderItem[];
 }> {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid user ID");
+  }
+
   if (!Number.isInteger(orderId) || orderId <= 0) {
     throw new Error("Invalid order ID");
   }
 
-  const order = await findOrderById(orderId);
+  try {
+    const order = await findOrderById(orderId);
 
-  if (!order || order.user_id !== userId) {
-    throw new Error("Order not found");
+    if (!order || order.user_id !== userId) {
+      throw new Error("Order not found");
+    }
+
+    const items = await findOrderItems(orderId);
+
+    return {
+      order,
+      items,
+    };
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  const items = await findOrderItems(orderId);
-
-  return {
-    order,
-    items,
-  };
 }
 
 // Get Order By Number
+
 export async function getOrderByNumber(
   orderNumber: string,
 ): Promise<Order | null> {
@@ -107,10 +123,15 @@ export async function getOrderByNumber(
     throw new Error("Order number is required");
   }
 
-  return findOrderByNumber(trimmedOrderNumber);
+  try {
+    return await findOrderByNumber(trimmedOrderNumber);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Update Order Status
+
 export async function updateOrderStatus(
   orderId: number,
   status: OrderStatus,
@@ -132,16 +153,21 @@ export async function updateOrderStatus(
     throw new Error("Invalid order status");
   }
 
-  const order = await findOrderById(orderId);
+  try {
+    const order = await findOrderById(orderId);
 
-  if (!order) {
-    throw new Error("Order not found");
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    return await updateOrderStatusModel(orderId, status);
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  return updateOrderStatusModel(orderId, status);
 }
 
 // Update Payment Status
+
 export async function updatePaymentStatus(
   orderId: number,
   status: PaymentStatus,
@@ -161,13 +187,17 @@ export async function updatePaymentStatus(
     throw new Error("Invalid payment status");
   }
 
-  const order = await findOrderById(orderId);
+  try {
+    const order = await findOrderById(orderId);
 
-  if (!order) {
-    throw new Error("Order not found");
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    return await updatePaymentStatusModel(orderId, status);
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  return updatePaymentStatusModel(orderId, status);
 }
 
 export async function checkout(userId: number, input: CheckoutInput) {
@@ -179,118 +209,125 @@ export async function checkout(userId: number, input: CheckoutInput) {
   // 2. Validate Checkout Input
   validateCheckoutInput(input);
 
-  // 3. Start Database Transaction
-  return withTransaction(async (connection) => {
-    // Find and lock user's cart
-    const cart = await findCartByUserId(userId, connection, true);
+  try {
+    // 3. Start Database Transaction
+    return await withTransaction(async (connection) => {
+      // Find and lock user's cart
+      const cart = await findCartByUserId(userId, connection, true);
 
-    if (!cart) {
-      throw new Error("Cart not found");
-    }
-
-    // Find and lock cart items
-    const cartItems = await findCartItems(cart.id, connection, true);
-
-    if (cartItems.length === 0) {
-      throw new Error("Your cart is empty");
-    }
-
-    // Calculate subtotal using cents
-    let subtotalCents = 0;
-
-    for (const item of cartItems) {
-      if (!item.is_active) {
-        throw new Error(`${item.title} is no longer available`);
+      if (!cart) {
+        throw new Error("Cart not found");
       }
 
-      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-        throw new Error(`Invalid quantity for ${item.title}`);
+      // Find and lock cart items
+      const cartItems = await findCartItems(cart.id, connection, true);
+
+      if (cartItems.length === 0) {
+        throw new Error("Your cart is empty");
       }
 
-      if (item.stock < item.quantity) {
-        throw new Error(`Insufficient stock for ${item.title}`);
+      // Calculate subtotal using cents
+      let subtotalCents = 0;
+
+      for (const item of cartItems) {
+        if (!item.is_active) {
+          throw new Error(`${item.title} is no longer available`);
+        }
+
+        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+          throw new Error(`Invalid quantity for ${item.title}`);
+        }
+
+        if (item.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${item.title}`);
+        }
+
+        const price = Number(item.price);
+
+        if (!Number.isFinite(price) || price < 0) {
+          throw new Error(`Invalid price for ${item.title}`);
+        }
+
+        const unitPriceCents = Math.round(price * 100);
+
+        subtotalCents += unitPriceCents * item.quantity;
+
+        if (!Number.isSafeInteger(subtotalCents)) {
+          throw new Error("Order amount is too large");
+        }
       }
 
-      const price = Number(item.price);
+      const subtotal = subtotalCents / 100;
 
-      if (!Number.isFinite(price) || price < 0) {
-        throw new Error(`Invalid price for ${item.title}`);
+      // Decrease book stock
+      for (const item of cartItems) {
+        const stockUpdated = await decreaseBookStock(
+          item.book_id,
+          item.quantity,
+          connection,
+        );
+
+        if (!stockUpdated) {
+          throw new Error(`Insufficient stock for ${item.title}`);
+        }
       }
 
-      const unitPriceCents = Math.round(price * 100);
+      // Calculate shipping fee
+      const shippingFee = 0;
 
-      subtotalCents += unitPriceCents * item.quantity;
+      // Calculate total amount
+      const totalAmount = subtotal + shippingFee;
 
-      if (!Number.isSafeInteger(subtotalCents)) {
-        throw new Error("Order amount is too large");
-      }
-    }
+      // Generate unique order number
+      const orderNumber = `ORD-${randomUUID()}`;
 
-    const subtotal = subtotalCents / 100;
-
-    // Decrease book stock
-    for (const item of cartItems) {
-      const stockUpdated = await decreaseBookStock(
-        item.book_id,
-        item.quantity,
+      // Create order record
+      const orderId = await createOrder(
+        {
+          user_id: userId,
+          order_number: orderNumber,
+          subtotal,
+          shipping_fee: shippingFee,
+          total_amount: totalAmount,
+          payment_method: input.payment_method,
+          shipping_name: input.shipping_name.trim(),
+          shipping_phone: input.shipping_phone.trim(),
+          shipping_address: input.shipping_address.trim(),
+        },
         connection,
       );
 
-      if (!stockUpdated) {
-        throw new Error(`Insufficient stock for ${item.title}`);
+      // Create order items
+      for (const item of cartItems) {
+        const unitPrice = Math.round(Number(item.price) * 100) / 100;
+
+        await createOrderItem(
+          {
+            order_id: orderId,
+            book_id: item.book_id,
+            book_title: item.title,
+            author: item.author,
+            unit_price: unitPrice,
+            quantity: item.quantity,
+          },
+          connection,
+        );
       }
-    }
-    // Calculate shipping fee
-    const shippingFee = 0;
 
-    // Calculate total amount
-    const totalAmount = subtotal + shippingFee;
+      // Clear user's cart
+      await clearCart(cart.id, connection);
 
-    // Generate unique order number
-    const orderNumber = `ORD-${randomUUID()}`;
-
-    // Create order record
-    const orderId = await createOrder(
-      {
-        user_id: userId,
+      // Return order summary
+      return {
+        order_id: orderId,
         order_number: orderNumber,
         subtotal,
         shipping_fee: shippingFee,
         total_amount: totalAmount,
         payment_method: input.payment_method,
-        shipping_name: input.shipping_name.trim(),
-        shipping_phone: input.shipping_phone.trim(),
-        shipping_address: input.shipping_address.trim(),
-      },
-      connection,
-    );
-    // Create order items
-    for (const item of cartItems) {
-      const unitPrice = Math.round(Number(item.price) * 100) / 100;
-
-      await createOrderItem(
-        {
-          order_id: orderId,
-          book_id: item.book_id,
-          book_title: item.title,
-          author: item.author,
-          unit_price: unitPrice,
-          quantity: item.quantity,
-        },
-        connection,
-      );
-    }
-    // Clear user's cart
-    await clearCart(cart.id, connection);
-
-    // Return order summary
-    return {
-      order_id: orderId,
-      order_number: orderNumber,
-      subtotal,
-      shipping_fee: shippingFee,
-      total_amount: totalAmount,
-      payment_method: input.payment_method,
-    };
-  });
+      };
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }

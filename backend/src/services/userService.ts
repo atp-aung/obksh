@@ -4,32 +4,48 @@ import {
   updateUserRole,
   updateUserStatus,
 } from "../models/userModel";
+import { handleDatabaseError } from "../utils/databaseError";
 
 import type { User, UserRole } from "../models/userModel";
 
 import type { PublicUser } from "./authService";
 
 // Get All Users
-export async function getAllUsers(): Promise<PublicUser[]> {
-  const users = await findAllUsers();
 
-  return users.map(({ password_hash, ...user }) => user);
+export async function getAllUsers(): Promise<PublicUser[]> {
+  try {
+    const users = await findAllUsers();
+
+    return users.map(({ password_hash, ...user }) => user);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Get User By ID
-export async function getUserById(id: number): Promise<PublicUser> {
-  const user = await findUserById(id);
 
-  if (!user) {
-    throw new Error("User not found");
+export async function getUserById(id: number): Promise<PublicUser> {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("Invalid user ID");
   }
 
-  const { password_hash, ...publicUser } = user;
+  try {
+    const user = await findUserById(id);
 
-  return publicUser;
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const { password_hash, ...publicUser } = user;
+
+    return publicUser;
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Change User Role
+
 export async function changeUserRole(
   targetUserId: number,
   newRole: UserRole,
@@ -47,16 +63,21 @@ export async function changeUserRole(
     throw new Error("You cannot change your own role");
   }
 
-  const targetUser = await findUserById(targetUserId);
+  try {
+    const targetUser = await findUserById(targetUserId);
 
-  if (!targetUser) {
-    throw new Error("User not found");
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    return await updateUserRole(targetUserId, newRole);
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  return updateUserRole(targetUserId, newRole);
 }
 
 // Change User Account Status
+
 export async function changeUserStatus(
   targetUserId: number,
   isActive: boolean,
@@ -74,11 +95,15 @@ export async function changeUserStatus(
     throw new Error("You cannot deactivate your own account");
   }
 
-  const targetUser = await findUserById(targetUserId);
+  try {
+    const targetUser = await findUserById(targetUserId);
 
-  if (!targetUser) {
-    throw new Error("User not found");
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    return await updateUserStatus(targetUserId, isActive);
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  return updateUserStatus(targetUserId, isActive);
 }

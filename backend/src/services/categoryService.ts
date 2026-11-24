@@ -5,6 +5,7 @@ import {
   updateCategory as updateCategoryModel,
   deactivateCategory as deactivateCategoryModel,
 } from "../models/categoryModel";
+import { handleDatabaseError } from "../utils/databaseError";
 
 import type { Category } from "../models/categoryModel";
 
@@ -29,6 +30,7 @@ export async function getCategoryById(id: number): Promise<Category> {
 }
 
 // Create Category
+
 export async function createCategory(input: {
   name: string;
   description?: string | null;
@@ -44,10 +46,14 @@ export async function createCategory(input: {
     throw new Error("Category name must not exceed 100 characters");
   }
 
-  return createCategoryModel({
-    name,
-    description,
-  });
+  try {
+    return await createCategoryModel({
+      name,
+      description,
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Update Category
@@ -62,12 +68,6 @@ export async function updateCategory(
     throw new Error("Invalid category ID");
   }
 
-  const existingCategory = await findCategoryById(id);
-
-  if (!existingCategory) {
-    throw new Error("Category not found");
-  }
-
   const name = input.name.trim();
   const description = input.description?.trim() || null;
 
@@ -79,13 +79,24 @@ export async function updateCategory(
     throw new Error("Category name must not exceed 100 characters");
   }
 
-  return updateCategoryModel(id, {
-    name,
-    description,
-  });
+  const existingCategory = await findCategoryById(id);
+
+  if (!existingCategory) {
+    throw new Error("Category not found");
+  }
+
+  try {
+    return await updateCategoryModel(id, {
+      name,
+      description,
+    });
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Deactivate Category
+
 export async function deactivateCategory(id: number): Promise<boolean> {
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error("Invalid category ID");
@@ -97,5 +108,9 @@ export async function deactivateCategory(id: number): Promise<boolean> {
     throw new Error("Category not found");
   }
 
-  return deactivateCategoryModel(id);
+  try {
+    return await deactivateCategoryModel(id);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }

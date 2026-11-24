@@ -6,6 +6,7 @@ import {
   updateBook as updateBookModel,
   deactivateBook as deactivateBookModel,
 } from "../models/bookModel";
+import { handleDatabaseError } from "../utils/databaseError";
 
 import type { BookWithCategory, CreateBookInput } from "../models/bookModel";
 
@@ -104,10 +105,15 @@ export async function searchBooksByKeyword(
 }
 
 // Create Book
+
 export async function createBook(input: CreateBookInput): Promise<number> {
   const validatedInput = await validateBookInput(input);
 
-  return createBookModel(validatedInput);
+  try {
+    return await createBookModel(validatedInput);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Update Book
@@ -127,7 +133,11 @@ export async function updateBook(
 
   const validatedInput = await validateBookInput(input);
 
-  return updateBookModel(id, validatedInput);
+  try {
+    return await updateBookModel(id, validatedInput);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }
 
 // Deactivate Book
@@ -142,5 +152,9 @@ export async function deactivateBook(id: number): Promise<boolean> {
     throw new Error("Book not found");
   }
 
-  return deactivateBookModel(id);
+  try {
+    return await deactivateBookModel(id);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
 }

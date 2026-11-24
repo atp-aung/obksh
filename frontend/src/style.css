@@ -1,21 +1,43 @@
-:root {
-  font-family: Arial, sans-serif;
-  color: #212529;
-  background-color: #f8f9fa;
-}
-
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
+  background-color: #ffffff;
+  color: #212529;
+}
+
+.card {
+  transition: transform 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.navbar-brand {
+  font-size: 1.3rem;
+}
+
+.nav-link {
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: #198754 !important;
+}
+
+.book-card-image {
+  height: 250px;
+  object-fit: cover;
   background-color: #f8f9fa;
 }
 
-.book-icon {
-  font-size: 3rem;
-  color: #0d6efd;
+.book-details-image {
+  max-height: 450px;
+  width: 100%;
+  object-fit: contain;
+  background-color: #f8f9fa;
 }
 
-button {
-  cursor: pointer;
+.cart-item-image {
+  width: 80px;
+  height: 100px;
+  object-fit: cover;
 }

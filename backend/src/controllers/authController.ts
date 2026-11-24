@@ -42,7 +42,27 @@ export const login: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    req.session.userId = user.id;
+    req.session.regenerate((error) => {
+      if (error) {
+        next(error);
+        return;
+      }
+
+      req.session.userId = user.id;
+
+      req.session.save((saveError) => {
+        if (saveError) {
+          next(saveError);
+          return;
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Login successful",
+          data: user,
+        });
+      });
+    });
 
     res.status(200).json({
       success: true,
@@ -62,7 +82,12 @@ export const logout: RequestHandler = (req, res, next) => {
       return;
     }
 
-    res.clearCookie("connect.sid");
+    res.clearCookie("obksh.sid", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
 
     res.status(200).json({
       success: true,

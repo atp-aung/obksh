@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 
 import { findUserByEmail, createUser } from "../models/userModel";
+import { handleDatabaseError } from "../utils/databaseError";
 
 import type { User, CreateUserInput } from "../models/userModel";
 
@@ -21,6 +22,7 @@ export interface LoginInput {
 }
 
 // Register User
+
 export async function registerUser(input: RegisterInput): Promise<PublicUser> {
   const username = input.username.trim();
   const email = input.email.trim().toLowerCase();
@@ -41,34 +43,39 @@ export async function registerUser(input: RegisterInput): Promise<PublicUser> {
     throw new Error("Password must be at least 8 characters");
   }
 
-  const existingUser = await findUserByEmail(email);
+  try {
+    const existingUser = await findUserByEmail(email);
 
-  if (existingUser) {
-    throw new Error("Email is already registered");
+    if (existingUser) {
+      throw new Error("Email is already registered");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 12);
+
+    const userInput: CreateUserInput = {
+      username,
+      email,
+      password_hash: passwordHash,
+    };
+
+    await createUser(userInput);
+
+    const createdUser = await findUserByEmail(email);
+
+    if (!createdUser) {
+      throw new Error("Failed to create user");
+    }
+
+    const { password_hash, ...publicUser } = createdUser;
+
+    return publicUser;
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  const passwordHash = await bcrypt.hash(input.password, 12);
-
-  const userInput: CreateUserInput = {
-    username,
-    email,
-    password_hash: passwordHash,
-  };
-
-  await createUser(userInput);
-
-  const createdUser = await findUserByEmail(email);
-
-  if (!createdUser) {
-    throw new Error("Failed to create user");
-  }
-
-  const { password_hash, ...publicUser } = createdUser;
-
-  return publicUser;
 }
 
 // Authenticate User
+
 export async function authenticateUser(
   input: LoginInput,
 ): Promise<PublicUser | null> {
@@ -78,22 +85,26 @@ export async function authenticateUser(
     return null;
   }
 
-  const user = await findUserByEmail(email);
+  try {
+    const user = await findUserByEmail(email);
 
-  if (!user || !user.is_active) {
-    return null;
+    if (!user || !user.is_active) {
+      return null;
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      input.password,
+      user.password_hash,
+    );
+
+    if (!passwordMatches) {
+      return null;
+    }
+
+    const { password_hash, ...publicUser } = user;
+
+    return publicUser;
+  } catch (error) {
+    handleDatabaseError(error);
   }
-
-  const passwordMatches = await bcrypt.compare(
-    input.password,
-    user.password_hash,
-  );
-
-  if (!passwordMatches) {
-    return null;
-  }
-
-  const { password_hash, ...publicUser } = user;
-
-  return publicUser;
 }
