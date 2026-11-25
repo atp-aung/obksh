@@ -1,17 +1,25 @@
+import { register } from "../services/authService";
+
 export function renderRegisterPage(): string {
   return `
-    <div class="row justify-content-center">
-      <div class="col-md-6 col-lg-5">
+    <section class="row justify-content-center py-5">
+      <div class="col-md-7 col-lg-6">
         <div class="card border-0 shadow-sm">
           <div class="card-body p-4 p-md-5">
 
-            <div class="text-center mb-4">
-              <i class="fa-solid fa-user-plus fa-3x text-success mb-3"></i>
-              <h2 class="fw-bold">Create Account</h2>
-              <p class="text-muted">
-                Join our Online Book Shop
-              </p>
-            </div>
+            <h2 class="fw-bold text-center mb-2">
+              Create Account
+            </h2>
+
+            <p class="text-muted text-center mb-4">
+              Join Online Book Shop today.
+            </p>
+
+            <div
+              id="registerMessage"
+              class="alert d-none"
+              role="alert"
+            ></div>
 
             <form id="registerForm">
               <div class="mb-3">
@@ -21,10 +29,8 @@ export function renderRegisterPage(): string {
 
                 <input
                   type="text"
-                  class="form-control"
                   id="username"
-                  name="username"
-                  placeholder="Enter your username"
+                  class="form-control"
                   maxlength="100"
                   required
                 >
@@ -37,10 +43,8 @@ export function renderRegisterPage(): string {
 
                 <input
                   type="email"
-                  class="form-control"
                   id="email"
-                  name="email"
-                  placeholder="Enter your email"
+                  class="form-control"
                   maxlength="150"
                   required
                 >
@@ -53,26 +57,22 @@ export function renderRegisterPage(): string {
 
                 <input
                   type="password"
-                  class="form-control"
                   id="password"
-                  name="password"
-                  placeholder="At least 8 characters"
+                  class="form-control"
                   minlength="8"
                   required
                 >
               </div>
 
-              <div class="mb-3">
+              <div class="mb-4">
                 <label for="confirmPassword" class="form-label">
                   Confirm Password
                 </label>
 
                 <input
                   type="password"
-                  class="form-control"
                   id="confirmPassword"
-                  name="confirmPassword"
-                  placeholder="Confirm your password"
+                  class="form-control"
                   minlength="8"
                   required
                 >
@@ -80,16 +80,16 @@ export function renderRegisterPage(): string {
 
               <button
                 type="submit"
-                class="btn btn-success w-100 mt-3"
+                id="registerButton"
+                class="btn btn-success w-100"
               >
-                <i class="fa-solid fa-user-plus me-2"></i>
-                Register
+                Create Account
               </button>
             </form>
 
             <p class="text-center mt-4 mb-0">
               Already have an account?
-              <a href="/login" class="text-success fw-bold">
+              <a href="/login" class="text-success">
                 Login
               </a>
             </p>
@@ -97,6 +97,69 @@ export function renderRegisterPage(): string {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   `;
+}
+
+export function setupRegisterPage(): void {
+  const form = document.querySelector<HTMLFormElement>("#registerForm");
+
+  const message = document.querySelector<HTMLDivElement>("#registerMessage");
+
+  const button = document.querySelector<HTMLButtonElement>("#registerButton");
+
+  if (!form || !message || !button) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const username = document
+      .querySelector<HTMLInputElement>("#username")
+      ?.value.trim();
+
+    const email = document
+      .querySelector<HTMLInputElement>("#email")
+      ?.value.trim();
+
+    const password =
+      document.querySelector<HTMLInputElement>("#password")?.value;
+
+    const confirmPassword =
+      document.querySelector<HTMLInputElement>("#confirmPassword")?.value;
+
+    if (!username || !email || !password || !confirmPassword) {
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      message.textContent = "Passwords do not match.";
+      message.className = "alert alert-danger";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Creating Account...";
+
+    message.classList.add("d-none");
+
+    try {
+      await register({
+        username,
+        email,
+        password,
+      });
+
+      form.reset();
+
+      window.location.replace("/login");
+    } catch (error) {
+      message.textContent =
+        error instanceof Error ? error.message : "Registration failed.";
+
+      message.className = "alert alert-danger";
+
+      button.disabled = false;
+      button.textContent = "Create Account";
+    }
+  });
 }

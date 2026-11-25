@@ -1,136 +1,166 @@
+import { getBookById } from "../services/bookService";
+import { addToCart } from "../services/cartService";
 import type { Book } from "../types/book";
 
-// Temporary Sample Data
-const sampleBooks: Book[] = [
-  {
-    id: 1,
-    category_id: 1,
-    category_name: "Programming",
-    title: "Clean Code",
-    author: "Robert C. Martin",
-    isbn: "9780132350884",
-    description:
-      "A handbook of agile software craftsmanship. This book teaches developers how to write clean, readable, and maintainable code.",
-    price: 25000,
-    stock: 10,
-    is_active: true,
-    image_url: "https://placehold.co/400x500?text=Clean+Code",
-  },
-  {
-    id: 2,
-    category_id: 1,
-    category_name: "Programming",
-    title: "The Pragmatic Programmer",
-    author: "David Thomas",
-    isbn: "9780135957059",
-    description:
-      "A practical guide to becoming a better software developer through proven programming practices.",
-    price: 30000,
-    stock: 8,
-    is_active: true,
-    image_url: "https://placehold.co/400x500?text=Pragmatic+Programmer",
-  },
-  {
-    id: 3,
-    category_id: 2,
-    category_name: "Novel",
-    title: "The Alchemist",
-    author: "Paulo Coelho",
-    isbn: "9780061122415",
-    description:
-      "A story about following your dreams and discovering your personal legend.",
-    price: 18000,
-    stock: 15,
-    is_active: true,
-    image_url: "https://placehold.co/400x500?text=The+Alchemist",
-  },
-  {
-    id: 4,
-    category_id: 3,
-    category_name: "Business",
-    title: "Rich Dad Poor Dad",
-    author: "Robert Kiyosaki",
-    isbn: "9781612680194",
-    description:
-      "A personal finance book that explores different approaches to money and financial education.",
-    price: 20000,
-    stock: 12,
-    is_active: true,
-    image_url: "https://placehold.co/400x500?text=Rich+Dad+Poor+Dad",
-  },
-];
-
-export function renderBookDetailsPage(bookId: number): string {
-  const book = sampleBooks.find((item) => item.id === bookId);
-
-  if (!book) {
-    return `
-      <div class="text-center py-5">
-        <i class="fa-solid fa-book-open fa-3x text-muted mb-3"></i>
-        <h3>Book Not Found</h3>
-        <a href="/books" class="btn btn-success mt-3">
-          Back to Books
-        </a>
-      </div>
-    `;
-  }
-
+export function renderBookDetailsPage(): string {
   return `
-    <section class="row g-5">
-      <div class="col-md-5 text-center">
-        <img
-          src="${book.image_url || "https://placehold.co/400x500?text=Book"}"
-          alt="${book.title}"
-          class="img-fluid rounded shadow-sm book-details-image"
-        >
+    <section id="bookDetailsContainer">
+      <div class="text-center py-5">
+        <div class="spinner-border text-success"></div>
+        <p class="text-muted mt-2">Loading book details...</p>
       </div>
+    </section>
+  `;
+}
 
-      <div class="col-md-7">
-        <small class="text-success fw-bold">
-          ${book.category_name || "General"}
-        </small>
+export async function setupBookDetailsPage(bookId: number): Promise<void> {
+  const container = document.querySelector<HTMLDivElement>(
+    "#bookDetailsContainer",
+  );
 
-        <h2 class="fw-bold mt-2">${book.title}</h2>
+  if (!container) return;
 
-        <p class="text-muted">
-          By ${book.author}
-        </p>
+  try {
+    const book: Book = await getBookById(bookId);
 
-        <h3 class="text-success fw-bold mt-4">
-          ${Number(book.price).toLocaleString()} MMK
-        </h3>
+    container.innerHTML = `
+      <div class="row g-5">
+        <div class="col-md-5">
+          <img
+            src="${escapeHtml(book.image_url || "https://placehold.co/500x600?text=Book")}"
+            alt="${escapeHtml(book.title)}"
+            class="img-fluid rounded shadow-sm book-details-image"
+          >
+        </div>
 
-        <p class="mt-4">${book.description || "No description available."}</p>
+        <div class="col-md-7">
+          <small class="text-success fw-semibold">
+            ${escapeHtml(book.category_name || "General")}
+          </small>
 
-        <p>
-          <strong>ISBN:</strong>
-          ${book.isbn || "N/A"}
-        </p>
+          <h2 class="fw-bold mt-2">${escapeHtml(book.title)}</h2>
 
-        <p>
-          <strong>Stock:</strong>
-          ${
-            book.stock > 0
-              ? `<span class="text-success">In Stock (${book.stock})</span>`
-              : `<span class="text-danger">Out of Stock</span>`
-          }
-        </p>
+          <p class="text-muted">
+            By ${escapeHtml(book.author)}
+          </p>
 
-        <button
-          class="btn btn-success btn-lg mt-3"
-          ${book.stock <= 0 ? "disabled" : ""}
-        >
-          <i class="fa-solid fa-cart-plus me-2"></i>
-          Add to Cart
-        </button>
+          <h3 class="text-success fw-bold mt-4">
+            ${Number(book.price).toLocaleString()} MMK
+          </h3>
 
-        <div class="mt-4">
-          <a href="/books" class="text-decoration-none text-success">
-            <i class="fa-solid fa-arrow-left me-2"></i>
+          <p class="mt-4">
+            ${escapeHtml(book.description || "No description available.")}
+          </p>
+
+          <p>
+            <strong>ISBN:</strong>
+            ${escapeHtml(book.isbn || "Not available")}
+          </p>
+
+          <p>
+            <strong>Stock:</strong>
+            ${book.stock > 0 ? book.stock + " available" : "Out of stock"}
+          </p>
+
+          <div id="addCartMessage" class="mt-3"></div>
+
+          <button
+            class="btn btn-success btn-lg mt-3"
+            type="button"
+            id="addToCartButton"
+            ${book.stock <= 0 || !book.is_active ? "disabled" : ""}
+          >
+            <i class="fa-solid fa-cart-plus me-2"></i>
+            Add to Cart
+          </button>
+
+          <a
+            href="/books"
+            class="btn btn-outline-secondary btn-lg mt-3 ms-2"
+          >
             Back to Books
           </a>
         </div>
       </div>
-    </section>
-  `;
+    `;
+
+    // Add To Cart Button
+    const addButton =
+      document.querySelector<HTMLButtonElement>("#addToCartButton");
+
+    const message = document.querySelector<HTMLDivElement>("#addCartMessage");
+
+    addButton?.addEventListener("click", async () => {
+      if (!message || !addButton) return;
+
+      try {
+        addButton.disabled = true;
+
+        addButton.innerHTML = `
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Adding...
+        `;
+
+        await addToCart(book.id, 1);
+
+        message.innerHTML = `
+          <div class="alert alert-success">
+            Book added to cart successfully!
+            <a href="/cart" class="alert-link">View Cart</a>
+          </div>
+        `;
+
+        addButton.innerHTML = `
+          <i class="fa-solid fa-check me-2"></i>
+          Added to Cart
+        `;
+      } catch (error) {
+        message.innerHTML = `
+          <div class="alert alert-danger">
+            ${escapeHtml(
+              error instanceof Error
+                ? error.message
+                : "Failed to add book to cart.",
+            )}
+          </div>
+        `;
+
+        addButton.disabled = false;
+
+        addButton.innerHTML = `
+          <i class="fa-solid fa-cart-plus me-2"></i>
+          Add to Cart
+        `;
+      }
+    });
+  } catch (error) {
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        ${escapeHtml(
+          error instanceof Error
+            ? error.message
+            : "Failed to load book details.",
+        )}
+      </div>
+
+      <a href="/books" class="btn btn-outline-secondary">
+        Back to Books
+      </a>
+    `;
+  }
+}
+
+// Escape HTML
+function escapeHtml(value: string | null): string {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+
+    return entities[character];
+  });
 }

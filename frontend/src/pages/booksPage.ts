@@ -1,53 +1,6 @@
 import type { Book } from "../types/book";
+import { getBooks } from "../services/bookService";
 import { renderBookCard } from "../components/bookCard";
-
-// Temporary Sample Data
-const sampleBooks: Book[] = [
-  {
-    id: 1,
-    category_id: 1,
-    category_name: "Programming",
-    title: "Clean Code",
-    author: "Robert C. Martin",
-    price: 25000,
-    stock: 10,
-    is_active: true,
-    image_url: "https://placehold.co/300x350?text=Clean+Code",
-  },
-  {
-    id: 2,
-    category_id: 1,
-    category_name: "Programming",
-    title: "The Pragmatic Programmer",
-    author: "David Thomas",
-    price: 30000,
-    stock: 8,
-    is_active: true,
-    image_url: "https://placehold.co/300x350?text=Pragmatic+Programmer",
-  },
-  {
-    id: 3,
-    category_id: 2,
-    category_name: "Novel",
-    title: "The Alchemist",
-    author: "Paulo Coelho",
-    price: 18000,
-    stock: 15,
-    is_active: true,
-    image_url: "https://placehold.co/300x350?text=The+Alchemist",
-  },
-  {
-    id: 4,
-    category_id: 3,
-    category_name: "Business",
-    title: "Rich Dad Poor Dad",
-    author: "Robert Kiyosaki",
-    price: 20000,
-    stock: 12,
-    is_active: true,
-    image_url: "https://placehold.co/300x350?text=Rich+Dad+Poor+Dad",
-  },
-];
 
 export function renderBooksPage(): string {
   return `
@@ -71,7 +24,10 @@ export function renderBooksPage(): string {
       </div>
 
       <div class="row g-4" id="booksContainer">
-        ${sampleBooks.map(renderBookCard).join("")}
+        <div class="col-12 text-center py-5">
+          <div class="spinner-border text-success"></div>
+          <p class="text-muted mt-2">Loading books...</p>
+        </div>
       </div>
 
       <p
@@ -80,11 +36,16 @@ export function renderBooksPage(): string {
       >
         No books found.
       </p>
+
+      <p
+        id="booksError"
+        class="text-center text-danger mt-4 d-none"
+      ></p>
     </section>
   `;
 }
 
-export function setupBooksSearch(): void {
+export async function setupBooksPage(): Promise<void> {
   const searchInput = document.querySelector<HTMLInputElement>("#bookSearch");
 
   const booksContainer =
@@ -93,23 +54,54 @@ export function setupBooksSearch(): void {
   const noBooksMessage =
     document.querySelector<HTMLParagraphElement>("#noBooksMessage");
 
-  if (!searchInput || !booksContainer || !noBooksMessage) {
+  const booksError =
+    document.querySelector<HTMLParagraphElement>("#booksError");
+
+  if (!searchInput || !booksContainer || !noBooksMessage || !booksError) {
     return;
   }
 
-  searchInput.addEventListener("input", () => {
-    const keyword = searchInput.value.trim().toLowerCase();
+  let books: Book[] = [];
 
-    const filteredBooks = sampleBooks.filter((book) => {
-      return (
-        book.title.toLowerCase().includes(keyword) ||
-        book.author.toLowerCase().includes(keyword) ||
-        (book.category_name || "").toLowerCase().includes(keyword)
-      );
+  try {
+    books = await getBooks();
+
+    renderBooks(books);
+
+    searchInput.addEventListener("input", () => {
+      const keyword = searchInput.value.trim().toLowerCase();
+
+      const filteredBooks = books.filter((book) => {
+        return (
+          book.title.toLowerCase().includes(keyword) ||
+          book.author.toLowerCase().includes(keyword) ||
+          (book.category_name || "").toLowerCase().includes(keyword)
+        );
+      });
+
+      renderBooks(filteredBooks);
     });
+  } catch (error) {
+    booksContainer.innerHTML = "";
 
-    booksContainer.innerHTML = filteredBooks.map(renderBookCard).join("");
+    booksError.textContent =
+      error instanceof Error ? error.message : "Failed to load books.";
 
-    noBooksMessage.classList.toggle("d-none", filteredBooks.length > 0);
-  });
+    booksError.classList.remove("d-none");
+  }
+
+  function renderBooks(bookList: Book[]): void {
+    const container = document.querySelector<HTMLDivElement>("#booksContainer");
+
+    const noBooks =
+      document.querySelector<HTMLParagraphElement>("#noBooksMessage");
+
+    if (!container || !noBooks) {
+      return;
+    }
+
+    container.innerHTML = bookList.map(renderBookCard).join("");
+
+    noBooks.classList.toggle("d-none", bookList.length > 0);
+  }
 }

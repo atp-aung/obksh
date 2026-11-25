@@ -4,42 +4,79 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./style.css";
 
 import { createMainLayout } from "./layouts/mainLayout";
+import { createAdminLayout } from "./layouts/adminLayout";
 
 import { renderHomePage } from "./pages/homePage";
-import { renderBooksPage, setupBooksSearch } from "./pages/booksPage";
-import { renderBookDetailsPage } from "./pages/bookDetailsPage";
-import { renderLoginPage } from "./pages/loginPage";
-import { renderRegisterPage } from "./pages/registerPage";
-import { renderCartPage } from "./pages/cartPage";
+import { renderBooksPage, setupBooksPage } from "./pages/booksPage";
+import {
+  renderBookDetailsPage,
+  setupBookDetailsPage,
+} from "./pages/bookDetailsPage";
+import { renderLoginPage, setupLoginPage } from "./pages/loginPage";
+import { renderRegisterPage, setupRegisterPage } from "./pages/registerPage";
+import { renderCartPage, setupCartPage } from "./pages/cartPage";
 import { renderCheckoutPage } from "./pages/checkoutPage";
 import { renderOrdersPage } from "./pages/ordersPage";
 import { renderOrderDetailsPage } from "./pages/orderDetailsPage";
+
 import { renderAdminDashboardPage } from "./pages/adminDashboardPage";
-import { createAdminLayout } from "./layouts/adminLayout";
 import { renderAdminBooksPage } from "./pages/adminBooksPage";
 import { renderAdminCategoriesPage } from "./pages/adminCategoriesPage";
 import { renderAdminOrdersPage } from "./pages/adminOrdersPage";
 import { renderAdminUsersPage } from "./pages/adminUsersPage";
 
+import { initializeAuth, isLoggedIn, isAdmin } from "./utils/auth";
+
 const app = document.querySelector<HTMLDivElement>("#app");
 
-function renderApp(): void {
+async function renderApp(): Promise<void> {
   if (!app) return;
 
+  const currentUser = await initializeAuth();
   const path = window.location.pathname;
+
+  // Protected Routes
+  const isProtectedRoute =
+    path === "/cart" ||
+    path === "/checkout" ||
+    path === "/orders" ||
+    /^\/orders\/\d+$/.test(path) ||
+    path.startsWith("/admin");
+
+  if (isProtectedRoute && !isLoggedIn()) {
+    window.location.replace("/login");
+    return;
+  }
+
+  // Admin Routes
+  if (path.startsWith("/admin") && !isAdmin()) {
+    window.location.replace("/");
+    return;
+  }
+
+  // Logged-in users should not return to Login/Register
+  if ((path === "/login" || path === "/register") && currentUser) {
+    window.location.replace(currentUser.role === "admin" ? "/admin" : "/");
+    return;
+  }
 
   let content: string;
 
+  // Public Routes
   if (path === "/books") {
     content = renderBooksPage();
   } else if (/^\/books\/\d+$/.test(path)) {
-    const bookId = Number(path.split("/")[2]);
-    content = renderBookDetailsPage(bookId);
+    content = renderBookDetailsPage();
   } else if (path === "/login") {
     content = renderLoginPage();
   } else if (path === "/register") {
     content = renderRegisterPage();
-  } else if (path === "/cart") {
+  } else if (path === "/") {
+    content = renderHomePage();
+  }
+
+  // User Routes
+  else if (path === "/cart") {
     content = renderCartPage();
   } else if (path === "/checkout") {
     content = renderCheckoutPage();
@@ -48,7 +85,10 @@ function renderApp(): void {
   } else if (/^\/orders\/\d+$/.test(path)) {
     const orderId = Number(path.split("/")[2]);
     content = renderOrderDetailsPage(orderId);
-  } else if (path === "/admin") {
+  }
+
+  // Admin Routes
+  else if (path === "/admin") {
     content = renderAdminDashboardPage();
   } else if (path === "/admin/books") {
     content = renderAdminBooksPage();
@@ -71,9 +111,27 @@ function renderApp(): void {
     app.replaceChildren(createMainLayout(contentElement));
   }
 
+  // Page Setup
   if (path === "/books") {
-    setupBooksSearch();
+    void setupBooksPage();
+  }
+
+  if (/^\/books\/\d+$/.test(path)) {
+    const bookId = Number(path.split("/")[2]);
+    void setupBookDetailsPage(bookId);
+  }
+
+  if (path === "/login") {
+    setupLoginPage();
+  }
+
+  if (path === "/register") {
+    setupRegisterPage();
+  }
+
+  if (path === "/cart") {
+    void setupCartPage();
   }
 }
 
-renderApp();
+void renderApp();
