@@ -1,0 +1,5 @@
+online book shop
+fe --> npm create vite@latest . -- --template vanilla-ts
+fe --> npm install
+fe --> npm install bootstrap @fortawesome/fontawesome-free
+
