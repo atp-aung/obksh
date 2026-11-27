@@ -5,6 +5,7 @@ import {
   getMyOrders,
   getMyOrderDetails,
   getOrderByNumberController,
+  getAllOrdersForAdminController,
   editOrderStatus,
   editPaymentStatus,
 } from "../controllers/orderController";
@@ -20,6 +21,8 @@ router.get("/", requireAuth, getMyOrders);
 router.get("/:id", requireAuth, getMyOrderDetails);
 
 // Admin Only Routes
+router.get("/admin", requireAdmin, getAllOrdersForAdminController);
+
 router.get("/number/:orderNumber", requireAdmin, getOrderByNumberController);
 
 router.patch("/:id/status", requireAdmin, editOrderStatus);
