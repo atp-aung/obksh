@@ -1,95 +1,62 @@
-interface OrderItem {
-  title: string;
-  author: string;
-  price: number;
-  quantity: number;
+import { getMyOrderDetails } from "../services/orderService";
+import type { OrderDetails } from "../services/orderService";
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[char];
+  });
 }
 
-interface OrderDetails {
-  id: number;
-  order_number: string;
-  created_at: string;
-  status: string;
-  payment_method: string;
-  payment_status: string;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_address: string;
-  items: OrderItem[];
-  total_amount: number;
-}
-
-// Temporary Sample Data
-const sampleOrders: OrderDetails[] = [
-  {
-    id: 1,
-    order_number: "ORD-2026-001",
-    created_at: "2026-11-20",
-    status: "delivered",
-    payment_method: "cash_on_delivery",
-    payment_status: "paid",
-    shipping_name: "Mg Mg",
-    shipping_phone: "09123456789",
-    shipping_address: "Yangon, Myanmar",
-    items: [
-      {
-        title: "Clean Code",
-        author: "Robert C. Martin",
-        price: 25000,
-        quantity: 2,
-      },
-      {
-        title: "The Alchemist",
-        author: "Paulo Coelho",
-        price: 18000,
-        quantity: 1,
-      },
-    ],
-    total_amount: 68000,
-  },
-  {
-    id: 2,
-    order_number: "ORD-2026-002",
-    created_at: "2026-11-22",
-    status: "processing",
-    payment_method: "bank_transfer",
-    payment_status: "paid",
-    shipping_name: "Mg Mg",
-    shipping_phone: "09123456789",
-    shipping_address: "Yangon, Myanmar",
-    items: [
-      {
-        title: "Rich Dad Poor Dad",
-        author: "Robert Kiyosaki",
-        price: 30000,
-        quantity: 1,
-      },
-    ],
-    total_amount: 30000,
-  },
-];
-
-export function renderOrderDetailsPage(orderId: number): string {
-  const order = sampleOrders.find((item) => item.id === orderId);
-
-  if (!order) {
-    return `
-      <div class="text-center py-5">
-        <h3>Order Not Found</h3>
-        <a href="/orders" class="btn btn-success mt-3">
-          Back to Orders
-        </a>
-      </div>
-    `;
-  }
-
-  const subtotal = order.items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0,
-  );
+function getStatusBadge(status: string): string {
+  const statusClasses: Record<string, string> = {
+    pending: "bg-warning text-dark",
+    confirmed: "bg-info text-dark",
+    processing: "bg-primary",
+    shipped: "bg-info",
+    delivered: "bg-success",
+    cancelled: "bg-danger",
+  };
 
   return `
-    <section>
+    <span class="badge ${statusClasses[status] || "bg-secondary"}">
+      ${escapeHtml(status.toUpperCase())}
+    </span>
+  `;
+}
+
+export function renderOrderDetailsPage(): string {
+  return `
+    <section id="orderDetailsContainer">
+      <div class="text-center py-5">
+        <div class="spinner-border text-success"></div>
+        <p class="text-muted mt-2">Loading order details...</p>
+      </div>
+    </section>
+  `;
+}
+
+export async function setupOrderDetailsPage(orderId: number): Promise<void> {
+  const container = document.querySelector<HTMLDivElement>(
+    "#orderDetailsContainer",
+  );
+
+  if (!container) return;
+
+  try {
+    const data: OrderDetails = await getMyOrderDetails(orderId);
+
+    const order = data.order;
+    const items = data.items;
+
+    container.innerHTML = `
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold">Order Details</h2>
 
@@ -104,26 +71,28 @@ export function renderOrderDetailsPage(orderId: number): string {
           <div class="row g-3">
             <div class="col-md-6">
               <small class="text-muted">Order Number</small>
-              <h6 class="fw-bold">${order.order_number}</h6>
-            </div>
-
-            <div class="col-md-6">
-              <small class="text-muted">Order Date</small>
-              <h6>${order.created_at}</h6>
-            </div>
-
-            <div class="col-md-6">
-              <small class="text-muted">Order Status</small>
-              <h6>
-                <span class="badge bg-success">
-                  ${order.status.toUpperCase()}
-                </span>
+              <h6 class="fw-bold">
+                ${escapeHtml(order.order_number)}
               </h6>
             </div>
 
             <div class="col-md-6">
+              <small class="text-muted">Order Date</small>
+              <h6>
+                ${new Date(order.created_at).toLocaleDateString()}
+              </h6>
+            </div>
+
+            <div class="col-md-6">
+              <small class="text-muted">Order Status</small>
+              <h6>${getStatusBadge(order.status)}</h6>
+            </div>
+
+            <div class="col-md-6">
               <small class="text-muted">Payment Status</small>
-              <h6>${order.payment_status.toUpperCase()}</h6>
+              <h6>
+                ${escapeHtml(order.payment_status.toUpperCase())}
+              </h6>
             </div>
           </div>
         </div>
@@ -135,34 +104,51 @@ export function renderOrderDetailsPage(orderId: number): string {
             <div class="card-body p-4">
               <h5 class="fw-bold mb-3">Ordered Books</h5>
 
-              ${order.items
-                .map(
-                  (item) => `
-                <div class="d-flex justify-content-between border-bottom py-3">
-                  <div>
-                    <h6 class="fw-bold mb-1">${item.title}</h6>
-                    <small class="text-muted">${item.author}</small>
-                    <p class="small mb-0">
-                      ${item.price.toLocaleString()} MMK × ${item.quantity}
-                    </p>
-                  </div>
+              ${
+                items.length > 0
+                  ? items
+                      .map(
+                        (item) => `
+                    <div class="d-flex justify-content-between border-bottom py-3">
+                      <div>
+                        <h6 class="fw-bold mb-1">
+                          ${escapeHtml(item.book_title)}
+                        </h6>
 
-                  <strong>
-                    ${(item.price * item.quantity).toLocaleString()} MMK
-                  </strong>
-                </div>
-              `,
-                )
-                .join("")}
+                        <small class="text-muted">
+                          ${escapeHtml(item.author)}
+                        </small>
+
+                        <p class="small mb-0">
+                          ${Number(item.unit_price).toLocaleString()} MMK
+                          × ${item.quantity}
+                        </p>
+                      </div>
+
+                      <strong>
+                        ${(
+                          Number(item.unit_price) * item.quantity
+                        ).toLocaleString()} MMK
+                      </strong>
+                    </div>
+                  `,
+                      )
+                      .join("")
+                  : '<p class="text-muted">No order items found.</p>'
+              }
 
               <div class="d-flex justify-content-between mt-3">
                 <span>Subtotal</span>
-                <strong>${subtotal.toLocaleString()} MMK</strong>
+                <strong>
+                  ${Number(order.subtotal).toLocaleString()} MMK
+                </strong>
               </div>
 
               <div class="d-flex justify-content-between mt-2">
                 <span>Shipping Fee</span>
-                <strong>0 MMK</strong>
+                <strong>
+                  ${Number(order.shipping_fee).toLocaleString()} MMK
+                </strong>
               </div>
 
               <hr>
@@ -170,7 +156,7 @@ export function renderOrderDetailsPage(orderId: number): string {
               <div class="d-flex justify-content-between">
                 <h5>Total</h5>
                 <h5 class="text-success">
-                  ${order.total_amount.toLocaleString()} MMK
+                  ${Number(order.total_amount).toLocaleString()} MMK
                 </h5>
               </div>
             </div>
@@ -184,22 +170,23 @@ export function renderOrderDetailsPage(orderId: number): string {
 
               <p class="mb-2">
                 <i class="fa-solid fa-user text-success me-2"></i>
-                ${order.shipping_name}
+                ${escapeHtml(order.shipping_name)}
               </p>
 
               <p class="mb-2">
                 <i class="fa-solid fa-phone text-success me-2"></i>
-                ${order.shipping_phone}
+                ${escapeHtml(order.shipping_phone)}
               </p>
 
               <p class="mb-0">
                 <i class="fa-solid fa-location-dot text-success me-2"></i>
-                ${order.shipping_address}
+                ${escapeHtml(order.shipping_address)}
               </p>
 
               <hr>
 
               <h6 class="fw-bold">Payment Method</h6>
+
               <p class="text-muted">
                 ${
                   order.payment_method === "cash_on_delivery"
@@ -211,6 +198,22 @@ export function renderOrderDetailsPage(orderId: number): string {
           </div>
         </div>
       </div>
-    </section>
-  `;
+    `;
+  } catch (error) {
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <div class="alert alert-danger">
+          ${escapeHtml(
+            error instanceof Error
+              ? error.message
+              : "Failed to load order details.",
+          )}
+        </div>
+
+        <a href="/orders" class="btn btn-success mt-3">
+          Back to Orders
+        </a>
+      </div>
+    `;
+  }
 }

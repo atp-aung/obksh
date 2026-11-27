@@ -1,42 +1,19 @@
-interface Order {
-  id: number;
-  order_number: string;
-  created_at: string;
-  total_amount: number;
-  status: string;
-  payment_method: string;
-  payment_status: string;
-}
+import { getMyOrders } from "../services/orderService";
+import type { Order } from "../services/orderService";
 
-const sampleOrders: Order[] = [
-  {
-    id: 1,
-    order_number: "ORD-2026-001",
-    created_at: "2026-11-20",
-    total_amount: 68000,
-    status: "delivered",
-    payment_method: "cash_on_delivery",
-    payment_status: "paid",
-  },
-  {
-    id: 2,
-    order_number: "ORD-2026-002",
-    created_at: "2026-11-22",
-    total_amount: 30000,
-    status: "processing",
-    payment_method: "bank_transfer",
-    payment_status: "paid",
-  },
-  {
-    id: 3,
-    order_number: "ORD-2026-003",
-    created_at: "2026-11-23",
-    total_amount: 25000,
-    status: "pending",
-    payment_method: "cash_on_delivery",
-    payment_status: "pending",
-  },
-];
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+
+    return entities[char];
+  });
+}
 
 function getStatusBadge(status: string): string {
   const statusClasses: Record<string, string> = {
@@ -52,7 +29,7 @@ function getStatusBadge(status: string): string {
 
   return `
     <span class="badge ${badgeClass}">
-      ${status.charAt(0).toUpperCase() + status.slice(1)}
+      ${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}
     </span>
   `;
 }
@@ -65,6 +42,49 @@ export function renderOrdersPage(): string {
         My Orders
       </h2>
 
+      <div id="ordersError" class="alert alert-danger d-none"></div>
+
+      <div id="ordersContainer">
+        <div class="text-center py-5">
+          <div class="spinner-border text-success"></div>
+          <p class="text-muted mt-2">Loading orders...</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export async function setupOrdersPage(): Promise<void> {
+  const container = document.querySelector<HTMLDivElement>("#ordersContainer");
+
+  const errorContainer = document.querySelector<HTMLDivElement>("#ordersError");
+
+  if (!container || !errorContainer) return;
+
+  try {
+    const orders: Order[] = await getMyOrders();
+
+    errorContainer.classList.add("d-none");
+
+    if (orders.length === 0) {
+      container.innerHTML = `
+        <div class="card border-0 shadow-sm">
+          <div class="card-body text-center py-5">
+            <i class="fa-solid fa-box-open fa-3x text-muted mb-3"></i>
+            <h5>No Orders Yet</h5>
+            <p class="text-muted">
+              You haven't placed any orders yet.
+            </p>
+            <a href="/books" class="btn btn-success">
+              Browse Books
+            </a>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
       <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -81,21 +101,25 @@ export function renderOrdersPage(): string {
               </thead>
 
               <tbody>
-                ${sampleOrders
+                ${orders
                   .map(
                     (order) => `
                   <tr>
                     <td class="p-3 fw-bold">
-                      ${order.order_number}
+                      ${escapeHtml(order.order_number)}
                     </td>
 
-                    <td>${order.created_at}</td>
+                    <td>
+                      ${new Date(order.created_at).toLocaleDateString()}
+                    </td>
 
                     <td class="text-success fw-bold">
-                      ${order.total_amount.toLocaleString()} MMK
+                      ${Number(order.total_amount).toLocaleString()} MMK
                     </td>
 
-                    <td>${getStatusBadge(order.status)}</td>
+                    <td>
+                      ${getStatusBadge(order.status)}
+                    </td>
 
                     <td>
                       ${
@@ -122,6 +146,13 @@ export function renderOrdersPage(): string {
           </div>
         </div>
       </div>
-    </section>
-  `;
+    `;
+  } catch (error) {
+    container.innerHTML = "";
+
+    errorContainer.textContent =
+      error instanceof Error ? error.message : "Failed to load orders.";
+
+    errorContainer.classList.remove("d-none");
+  }
 }

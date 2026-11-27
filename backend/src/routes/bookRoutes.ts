@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   getBooks,
+  getAdminBooks,
   getBook,
   searchBooks,
   addBook,
@@ -16,9 +17,11 @@ const router = Router();
 // Public Routes
 router.get("/", getBooks);
 router.get("/search", searchBooks);
-router.get("/:id", getBook);
 
 // Admin Only Routes
+router.get("/admin", requireAdmin, getAdminBooks);
+
+router.get("/:id", getBook);
 router.post("/", requireAdmin, addBook);
 router.put("/:id", requireAdmin, editBook);
 router.delete("/:id", requireAdmin, removeBook);

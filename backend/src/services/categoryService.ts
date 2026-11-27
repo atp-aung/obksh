@@ -1,5 +1,6 @@
 import {
   findAllCategories,
+  findAllCategoriesForAdmin,
   findCategoryById,
   createCategory as createCategoryModel,
   updateCategory as updateCategoryModel,
@@ -12,6 +13,11 @@ import type { Category } from "../models/categoryModel";
 // Get All Active Categories
 export async function getAllCategories(): Promise<Category[]> {
   return findAllCategories();
+}
+
+// Get All Categories For Admin
+export async function getAllCategoriesForAdmin(): Promise<Category[]> {
+  return findAllCategoriesForAdmin();
 }
 
 // Get Category By ID

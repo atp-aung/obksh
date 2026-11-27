@@ -2,12 +2,14 @@ import type { RequestHandler } from "express";
 
 import {
   getAllBooks,
+  getAllBooksForAdmin,
   getBookById,
   searchBooksByKeyword,
   createBook,
   updateBook,
   deactivateBook,
 } from "../services/bookService";
+
 import type { CreateBookInput } from "../models/bookModel";
 
 // Get All Books Controller
@@ -18,6 +20,20 @@ export const getBooks: RequestHandler = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Books retrieved successfully",
+      data: books,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdminBooks: RequestHandler = async (req, res, next) => {
+  try {
+    const books = await getAllBooksForAdmin();
+
+    res.status(200).json({
+      success: true,
+      message: "All books retrieved successfully",
       data: books,
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 
 import {
   getAllCategories,
+  getAllCategoriesForAdmin,
   getCategoryById,
   createCategory,
   updateCategory,
@@ -16,6 +17,21 @@ export const getCategories: RequestHandler = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Categories retrieved successfully",
+      data: categories,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get All Categories For Admin Controller
+export const getAdminCategories: RequestHandler = async (req, res, next) => {
+  try {
+    const categories = await getAllCategoriesForAdmin();
+
+    res.status(200).json({
+      success: true,
+      message: "All categories retrieved successfully",
       data: categories,
     });
   } catch (error) {

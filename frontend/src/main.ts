@@ -15,13 +15,25 @@ import {
 import { renderLoginPage, setupLoginPage } from "./pages/loginPage";
 import { renderRegisterPage, setupRegisterPage } from "./pages/registerPage";
 import { renderCartPage, setupCartPage } from "./pages/cartPage";
-import { renderCheckoutPage } from "./pages/checkoutPage";
-import { renderOrdersPage } from "./pages/ordersPage";
-import { renderOrderDetailsPage } from "./pages/orderDetailsPage";
+import { renderCheckoutPage, setupCheckoutPage } from "./pages/checkoutPage";
+import { renderOrdersPage, setupOrdersPage } from "./pages/ordersPage";
+import {
+  renderOrderDetailsPage,
+  setupOrderDetailsPage,
+} from "./pages/orderDetailsPage";
 
-import { renderAdminDashboardPage } from "./pages/adminDashboardPage";
-import { renderAdminBooksPage } from "./pages/adminBooksPage";
-import { renderAdminCategoriesPage } from "./pages/adminCategoriesPage";
+import {
+  renderAdminDashboardPage,
+  setupAdminDashboardPage,
+} from "./pages/adminDashboardPage";
+import {
+  renderAdminBooksPage,
+  setupAdminBooksPage,
+} from "./pages/adminBooksPage";
+import {
+  renderAdminCategoriesPage,
+  setupAdminCategoriesPage,
+} from "./pages/adminCategoriesPage";
 import { renderAdminOrdersPage } from "./pages/adminOrdersPage";
 import { renderAdminUsersPage } from "./pages/adminUsersPage";
 
@@ -83,8 +95,7 @@ async function renderApp(): Promise<void> {
   } else if (path === "/orders") {
     content = renderOrdersPage();
   } else if (/^\/orders\/\d+$/.test(path)) {
-    const orderId = Number(path.split("/")[2]);
-    content = renderOrderDetailsPage(orderId);
+    content = renderOrderDetailsPage();
   }
 
   // Admin Routes
@@ -131,6 +142,27 @@ async function renderApp(): Promise<void> {
 
   if (path === "/cart") {
     void setupCartPage();
+  }
+
+  if (path === "/checkout") {
+    void setupCheckoutPage();
+  }
+
+  if (path === "/orders") {
+    void setupOrdersPage();
+  }
+
+  const orderDetailsMatch = path.match(/^\/orders\/(\d+)$/);
+
+  if (orderDetailsMatch) {
+    void setupOrderDetailsPage(Number(orderDetailsMatch[1]));
+  }
+  if (path === "/admin") {
+    void setupAdminDashboardPage();
+  }
+  if (path === "/admin/books") void setupAdminBooksPage();
+  if (path === "/admin/categories") {
+    void setupAdminCategoriesPage();
   }
 }
 

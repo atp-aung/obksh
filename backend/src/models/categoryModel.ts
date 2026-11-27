@@ -28,6 +28,15 @@ export async function findAllCategories(): Promise<Category[]> {
   );
 }
 
+// Find All Categories For Admin
+export async function findAllCategoriesForAdmin(): Promise<Category[]> {
+  return selectQuery<Category>(
+    `SELECT *
+     FROM categories
+     ORDER BY name ASC`,
+  );
+}
+
 // Find Category By ID
 export async function findCategoryById(id: number): Promise<Category | null> {
   const categories = await selectQuery<Category>(

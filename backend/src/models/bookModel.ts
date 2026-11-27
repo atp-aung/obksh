@@ -51,6 +51,18 @@ export async function findAllBooks(): Promise<BookWithCategory[]> {
   );
 }
 
+export async function findAllBooksForAdmin(): Promise<BookWithCategory[]> {
+  return selectQuery<BookWithCategory>(
+    `SELECT
+      books.*,
+      categories.name AS category_name
+    FROM books
+    LEFT JOIN categories
+      ON books.category_id = categories.id
+    ORDER BY books.created_at DESC`,
+  );
+}
+
 // Find Book By ID
 export async function findBookById(
   id: number,

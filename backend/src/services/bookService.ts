@@ -1,5 +1,6 @@
 import {
   findAllBooks,
+  findAllBooksForAdmin,
   findBookById,
   searchBooks,
   createBook as createBookModel,
@@ -7,10 +8,9 @@ import {
   deactivateBook as deactivateBookModel,
 } from "../models/bookModel";
 import { handleDatabaseError } from "../utils/databaseError";
+import { findCategoryById } from "../models/categoryModel";
 
 import type { BookWithCategory, CreateBookInput } from "../models/bookModel";
-
-import { findCategoryById } from "../models/categoryModel";
 
 // Validate Book Input
 async function validateBookInput(
@@ -74,6 +74,10 @@ async function validateBookInput(
 // Get All Active Books
 export async function getAllBooks(): Promise<BookWithCategory[]> {
   return findAllBooks();
+}
+
+export async function getAllBooksForAdmin(): Promise<BookWithCategory[]> {
+  return findAllBooksForAdmin();
 }
 
 // Get Book By ID

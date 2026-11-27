@@ -162,3 +162,17 @@ export async function updatePaymentStatus(
 
   return result.affectedRows > 0;
 }
+
+// Find All Orders For Admin
+export async function findAllOrdersForAdmin(): Promise<Order[]> {
+  return selectQuery<Order>(
+    `SELECT
+      orders.*,
+      users.username,
+      users.email
+    FROM orders
+    INNER JOIN users
+      ON orders.user_id = users.id
+    ORDER BY orders.created_at DESC`,
+  );
+}

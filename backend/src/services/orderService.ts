@@ -2,6 +2,7 @@ import {
   findOrdersByUserId,
   findOrderById,
   findOrderByNumber,
+  findAllOrdersForAdmin,
   updateOrderStatus as updateOrderStatusModel,
   updatePaymentStatus as updatePaymentStatusModel,
 } from "../models/orderModel";
@@ -72,6 +73,15 @@ export async function getUserOrders(userId: number): Promise<Order[]> {
 
   try {
     return await findOrdersByUserId(userId);
+  } catch (error) {
+    handleDatabaseError(error);
+  }
+}
+
+// Get All Orders For Admin
+export async function getAllOrdersForAdmin(): Promise<Order[]> {
+  try {
+    return await findAllOrdersForAdmin();
   } catch (error) {
     handleDatabaseError(error);
   }

@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   getCategories,
+  getAdminCategories,
   getCategory,
   addCategory,
   editCategory,
@@ -14,9 +15,11 @@ const router = Router();
 
 // Public Routes
 router.get("/", getCategories);
-router.get("/:id", getCategory);
 
 // Admin Only Routes
+router.get("/admin", requireAdmin, getAdminCategories);
+
+router.get("/:id", getCategory);
 router.post("/", requireAdmin, addCategory);
 router.put("/:id", requireAdmin, editCategory);
 router.delete("/:id", requireAdmin, removeCategory);
