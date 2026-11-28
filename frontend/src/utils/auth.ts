@@ -30,3 +30,11 @@ export function clearAuth(): void {
   currentUser = null;
   authChecked = false;
 }
+
+// Re-check authentication with the backend
+export async function refreshAuth(): Promise<User | null> {
+  currentUser = await getCurrentUser();
+  authChecked = true;
+
+  return currentUser;
+}

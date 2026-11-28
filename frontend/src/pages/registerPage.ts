@@ -110,6 +110,15 @@ export function setupRegisterPage(): void {
 
   if (!form || !message || !button) return;
 
+  // Clear previous form data
+  form.reset();
+
+  // Clear form data when restored from browser cache
+  window.addEventListener("pageshow", () => {
+    form.reset();
+    message.classList.add("d-none");
+  });
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -157,6 +166,16 @@ export function setupRegisterPage(): void {
         error instanceof Error ? error.message : "Registration failed.";
 
       message.className = "alert alert-danger";
+
+      // Clear password fields after failed registration
+      const passwordInput =
+        document.querySelector<HTMLInputElement>("#password");
+
+      const confirmPasswordInput =
+        document.querySelector<HTMLInputElement>("#confirmPassword");
+
+      if (passwordInput) passwordInput.value = "";
+      if (confirmPasswordInput) confirmPasswordInput.value = "";
 
       button.disabled = false;
       button.textContent = "Create Account";

@@ -6,6 +6,7 @@ import {
   getMyOrderDetails,
   getOrderByNumberController,
   getAllOrdersForAdminController,
+  getAdminOrderDetailsController,
   editOrderStatus,
   editPaymentStatus,
 } from "../controllers/orderController";
@@ -20,8 +21,10 @@ router.post("/checkout", requireAuth, createCheckout);
 router.get("/", requireAuth, getMyOrders);
 router.get("/:id", requireAuth, getMyOrderDetails);
 
-// Admin Only Routes
+/// Admin Only Routes
 router.get("/admin", requireAdmin, getAllOrdersForAdminController);
+
+router.get("/admin/:id", requireAdmin, getAdminOrderDetailsController);
 
 router.get("/number/:orderNumber", requireAdmin, getOrderByNumberController);
 

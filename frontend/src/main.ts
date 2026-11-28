@@ -35,9 +35,20 @@ import {
   setupAdminCategoriesPage,
 } from "./pages/adminCategoriesPage";
 import { renderAdminOrdersPage } from "./pages/adminOrdersPage";
-import { renderAdminUsersPage } from "./pages/adminUsersPage";
+import {
+  renderAdminUsersPage,
+  setupAdminUsersPage,
+} from "./pages/adminUsersPage";
 
-import { initializeAuth, isLoggedIn, isAdmin } from "./utils/auth";
+import {
+  initializeAuth,
+  refreshAuth,
+  isLoggedIn,
+  isAdmin,
+  clearAuth,
+} from "./utils/auth";
+
+import { logout } from "./services/authService";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -164,6 +175,46 @@ async function renderApp(): Promise<void> {
   if (path === "/admin/categories") {
     void setupAdminCategoriesPage();
   }
+  if (path === "/admin/users") {
+    void setupAdminUsersPage();
+  }
 }
+
+// Logout
+document.addEventListener("click", async (event) => {
+  const target = event.target as HTMLElement;
+
+  const logoutButton = target.closest("#adminLogoutButton, #logoutButton");
+
+  if (!logoutButton) return;
+
+  const button = logoutButton as HTMLButtonElement;
+
+  button.disabled = true;
+
+  try {
+    await logout();
+
+    clearAuth();
+
+    window.location.replace("/login");
+  } catch (error) {
+    button.disabled = false;
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Logout failed. Please try again.",
+    );
+  }
+});
+
+// Browser Back / Forward Cache Protection
+window.addEventListener("pageshow", async (event) => {
+  if (event.persisted) {
+    await refreshAuth();
+    await renderApp();
+  }
+});
 
 void renderApp();

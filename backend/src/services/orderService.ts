@@ -140,8 +140,34 @@ export async function getOrderByNumber(
   }
 }
 
-// Update Order Status
+// Get Order Details For Admin
+export async function getAdminOrderDetails(orderId: number): Promise<{
+  order: Order;
+  items: OrderItem[];
+}> {
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    throw new Error("Invalid order ID");
+  }
 
+  try {
+    const order = await findOrderById(orderId);
+
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const items = await findOrderItems(orderId);
+
+    return {
+      order,
+      items,
+    };
+  } catch (error) {
+    handleDatabaseError(error);
+  }
+}
+
+// Update Order Status
 export async function updateOrderStatus(
   orderId: number,
   status: OrderStatus,

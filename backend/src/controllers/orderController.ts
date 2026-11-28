@@ -6,6 +6,7 @@ import {
   getUserOrderDetails,
   getOrderByNumber,
   getAllOrdersForAdmin,
+  getAdminOrderDetails,
   updateOrderStatus,
   updatePaymentStatus,
 } from "../services/orderService";
@@ -84,6 +85,27 @@ export const getAllOrdersForAdminController: RequestHandler = async (
       success: true,
       message: "All orders retrieved successfully",
       data: orders,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get Admin Order Details Controller
+export const getAdminOrderDetailsController: RequestHandler = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const orderId = Number(req.params.id);
+
+    const orderDetails = await getAdminOrderDetails(orderId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order details retrieved successfully",
+      data: orderDetails,
     });
   } catch (error) {
     next(error);

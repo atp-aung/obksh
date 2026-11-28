@@ -1,8 +1,12 @@
+import { getAuthUser } from "../utils/auth";
+
 // Create Navbar
 export function createNavbar(): HTMLElement {
   const navbar = document.createElement("nav");
 
   navbar.className = "navbar navbar-expand-lg navbar-dark bg-dark";
+
+  const user = getAuthUser();
 
   navbar.innerHTML = `
     <div class="container">
@@ -28,6 +32,7 @@ export function createNavbar(): HTMLElement {
         id="navbarContent"
       >
         <ul class="navbar-nav ms-auto align-items-lg-center">
+
           <li class="nav-item">
             <a class="nav-link" href="/">
               <i class="fa-solid fa-house me-1"></i>
@@ -42,26 +47,53 @@ export function createNavbar(): HTMLElement {
             </a>
           </li>
 
-          <li class="nav-item">
-            <a class="nav-link" href="/cart">
-              <i class="fa-solid fa-cart-shopping me-1"></i>
-              Cart
-            </a>
-          </li>
+          ${
+            user
+              ? `
+                <li class="nav-item">
+                  <a class="nav-link" href="/cart">
+                    <i class="fa-solid fa-cart-shopping me-1"></i>
+                    Cart
+                  </a>
+                </li>
 
-          <li class="nav-item">
-            <a class="nav-link" href="/login">
-              <i class="fa-solid fa-right-to-bracket me-1"></i>
-              Login
-            </a>
-          </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="/orders">
+                    <i class="fa-solid fa-box me-1"></i>
+                    My Orders
+                  </a>
+                </li>
 
-          <li class="nav-item">
-            <a class="btn btn-success ms-lg-2 mt-2 mt-lg-0"
-               href="/register">
-              Register
-            </a>
-          </li>
+                <li class="nav-item">
+                  <button
+                    class="btn btn-outline-light ms-lg-2 mt-2 mt-lg-0"
+                    id="logoutButton"
+                    type="button"
+                  >
+                    <i class="fa-solid fa-right-from-bracket me-1"></i>
+                    Logout
+                  </button>
+                </li>
+              `
+              : `
+                <li class="nav-item">
+                  <a class="nav-link" href="/login">
+                    <i class="fa-solid fa-right-to-bracket me-1"></i>
+                    Login
+                  </a>
+                </li>
+
+                <li class="nav-item">
+                  <a
+                    class="btn btn-success ms-lg-2 mt-2 mt-lg-0"
+                    href="/register"
+                  >
+                    Register
+                  </a>
+                </li>
+              `
+          }
+
         </ul>
       </div>
     </div>

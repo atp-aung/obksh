@@ -38,18 +38,18 @@ app.use(
   }),
 );
 
+// Prevent caching of application responses
+app.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
 // Body Parsing Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Session Middleware
 app.use(sessionMiddleware);
-
-// Prevent caching of application responses
-app.use((req, res, next) => {
-  res.setHeader("Cache-Control", "no-store");
-  next();
-});
 
 // Health Check
 app.get("/api/health", (req, res) => {

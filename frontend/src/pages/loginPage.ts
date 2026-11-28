@@ -80,6 +80,14 @@ export function setupLoginPage(): void {
 
   if (!form || !message || !button) return;
 
+  // Clear previous form data
+  form.reset();
+
+  // Clear password when page is restored from browser cache
+  window.addEventListener("pageshow", () => {
+    form.reset();
+  });
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
